@@ -1,0 +1,15 @@
+data/raw/
+data/processed/
+data/yolo/
+
+runs/
+results/
+notebooks/runs/
+
+*.pt
+*.pth
+*.onnx
+
+.vscode/
+__pycache__/
+.ipynb_checkpoints/
