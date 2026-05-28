@@ -5,6 +5,7 @@ data/yolo/
 runs/
 results/
 notebooks/runs/
+weights/
 
 *.pt
 *.pth
