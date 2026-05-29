@@ -49,8 +49,8 @@ def generate_mock_event():
     event_log.append(event)
 
     return event
-
-
+# Hanna test
+# Event system module_1
 # 전체 이벤트 반환 함수
 def get_events():
     return event_log
@@ -64,4 +64,4 @@ if __name__ == "__main__":
     print(generate_mock_event())
 
     print("\n전체 이벤트:")
-    print(get_events())
+    print(get_events())# Updated by Hanna
