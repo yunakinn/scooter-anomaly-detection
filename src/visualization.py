@@ -35,7 +35,7 @@ def plot_events_by_time(events: list):
         ts = e.get("timestamp", "")
         if ts:
             try:
-                hour = int(ts.split(":")[0])
+                hour = int(ts.split(" ")[1].split(":")[0])
                 hours.append(hour)
             except ValueError:
                 pass
