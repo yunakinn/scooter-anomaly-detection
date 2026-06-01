@@ -1,5 +1,5 @@
 import math
-from event_system import LOCATIONS
+from src.event_system import LOCATIONS
 
 # 한양대 ERICA 캠퍼스 위치 좌표 (x, y) 단위: 미터 (수동 지정)
 LOCATION_COORDS = {
