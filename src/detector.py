@@ -6,7 +6,7 @@ ROOT = Path("/data1/workspaces/tp2026/scooter-anomaly-detection")
 
 DEFAULT_MODEL_PATH = os.getenv(
     "MODEL_PATH",
-    str(ROOT / "results/yolov8n_binary_v1_train/weights/best.pt")
+    str(ROOT / "results/yolo26n_ep45_train/weights/best.pt")
 )
 
 CLASS_NAMES = {
@@ -46,15 +46,17 @@ class Detector:
             elif det["label"] == "abnormal":
                 abnormal_confidence = max(abnormal_confidence, det["confidence"])
 
-        if abnormal_confidence > 0:
+        prediction_threshold = 0.5
+
+        if abnormal_confidence >= prediction_threshold:
             prediction = "abnormal"
             confidence = abnormal_confidence
-        elif normal_confidence > 0:
+        elif normal_confidence >= prediction_threshold:
             prediction = "normal"
             confidence = normal_confidence
         else:
             prediction = "none"
-            confidence = 0.0
+            confidence = max(normal_confidence, abnormal_confidence, 0.0)
 
         violation_score = round(abnormal_confidence * 100, 1)
 
