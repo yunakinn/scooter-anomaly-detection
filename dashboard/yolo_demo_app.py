@@ -207,7 +207,6 @@ with col_result:
                 score_result=score_result
             )
 
-            event["event_id"] = len(st.session_state["events"]) + 1
 
             st.session_state["events"].append(event)
             st.session_state["current_event"] = event
