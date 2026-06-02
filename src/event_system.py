@@ -1,7 +1,6 @@
 import random
 from datetime import datetime
 
-# 한양대 ERICA 캠퍼스 위치 목록
 LOCATIONS = [
     "정문 앞",
     "학술정보관 앞",
@@ -14,54 +13,51 @@ LOCATIONS = [
     "셔틀콕 앞",
 ]
 
-# 이벤트 저장 리스트
 event_log = []
 
 
-# mock IMU 이벤트 생성 함수
-def generate_mock_event():
-
+def create_detection_event(
+    image_path,
+    location=None,
+    source="image",
+    detection_result=None,
+    score_result=None
+):
     event = {
-        # 이벤트 번호
         "event_id": len(event_log) + 1,
-
-        # 발생 시간
         "timestamp": str(datetime.now()),
-
-        # 이벤트 발생 위치
-        "location": random.choice(LOCATIONS),
-
-        # 기울기 값 (0~50도)
-        "tilt": random.randint(0, 50),
-
-        # 충격 감지 여부
-        "shock": random.choice([True, False])
+        "location": location if location else random.choice(LOCATIONS),
+        "image_path": str(image_path),
+        "source": source
     }
 
-    # 정상 / 이상 상태 판정
-    event["status"] = (
-        "abnormal"
-        if event["tilt"] >= 30 or event["shock"]
-        else "normal"
-    )
+    if detection_result:
+        event.update({
+            "prediction": detection_result.get("prediction", "none"),
+            "confidence": detection_result.get("confidence", 0.0),
+            "abnormal_confidence": detection_result.get("abnormal_confidence", 0.0),
+            "detections": detection_result.get("detections", [])
+        })
 
-    # 이벤트 저장
+    if score_result:
+        event.update(score_result)
+
     event_log.append(event)
-
     return event
-# Hanna test
-# Event system module_1
-# 전체 이벤트 반환 함수
+
+
 def get_events():
     return event_log
 
 
-# 테스트 실행
+def clear_events():
+    event_log.clear()
+
+
 if __name__ == "__main__":
-
-    print(generate_mock_event())
-    print(generate_mock_event())
-    print(generate_mock_event())
-
-    print("\n전체 이벤트:")
-    print(get_events())# Updated by Hanna
+    event = create_detection_event(
+        image_path="data/demo_images/abnormal/sample.jpg",
+        location="학술정보관 앞",
+        source="demo_image"
+    )
+    print(event)
