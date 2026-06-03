@@ -2,11 +2,11 @@ from pathlib import Path
 import os
 from ultralytics import YOLO
 
-ROOT = Path("/data1/workspaces/tp2026/scooter-anomaly-detection")
+ROOT = Path(__file__).resolve().parent.parent
 
 DEFAULT_MODEL_PATH = os.getenv(
     "MODEL_PATH",
-    str(ROOT / "results/yolo26n_ep45_train/weights/best.pt")
+    str(ROOT / "weights/best.pt")
 )
 
 CLASS_NAMES = {
