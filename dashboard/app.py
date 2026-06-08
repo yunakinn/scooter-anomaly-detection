@@ -1,210 +1,177 @@
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit as st
-from PIL import Image
-
-# ── Real imports from teammates ──────────────────────────────────────────────
-from src.event_system import generate_mock_event, get_events
 from src.risk_scorer import RiskScorer
-from src.route_optimizer import get_priority_list, optimize_route, get_total_distance
-from src.visualization import (
-    plot_abnormal_ratio,
-    plot_events_by_time,
-    plot_risk_distribution,
-    plot_incidents_by_location,
-)
+from dashboard.styles import get_styles
+from dashboard import user_tab, admin_tab
 
-# ── Page config ───────────────────────────────────────────────────────────────
+
 st.set_page_config(
-    page_title="Scooter Anomaly Detection",
+    page_title="전동킥보드 불법 주정차 탐지 시스템",
     page_icon="🛴",
     layout="wide"
 )
 
+st.markdown(get_styles(), unsafe_allow_html=True)
+
+
+def get_demo_events():
+    return [
+        {
+            "event_id": 1,
+            "timestamp": "2026-06-08 08:12:34",
+            "location": "경상관 앞",
+            "source": "데모",
+            "prediction": "abnormal",
+            "confidence": 0.94,
+            "abnormal_confidence": 0.94,
+            "risk_score": 94.0,
+            "violation_score": 94.0,
+            "level": "매우 높음 🔴",
+            "action": "즉시 확인 및 수거 필요",
+            "status": "확인 대기",
+            "detections": []
+        },
+        {
+            "event_id": 2,
+            "timestamp": "2026-06-08 09:05:21",
+            "location": "제4공학관 앞",
+            "source": "데모",
+            "prediction": "abnormal",
+            "confidence": 0.88,
+            "abnormal_confidence": 0.88,
+            "risk_score": 88.0,
+            "violation_score": 88.0,
+            "level": "매우 높음 🔴",
+            "action": "즉시 확인 및 수거 필요",
+            "status": "확인 대기",
+            "detections": []
+        },
+        {
+            "event_id": 3,
+            "timestamp": "2026-06-08 09:45:10",
+            "location": "셔틀콕 앞",
+            "source": "데모",
+            "prediction": "abnormal",
+            "confidence": 0.76,
+            "abnormal_confidence": 0.76,
+            "risk_score": 76.0,
+            "violation_score": 76.0,
+            "level": "높음 🟡",
+            "action": "현장 확인 필요",
+            "status": "현장 확인 중",
+            "detections": []
+        },
+        {
+            "event_id": 4,
+            "timestamp": "2026-06-08 10:22:48",
+            "location": "제2과학기술관 앞",
+            "source": "데모",
+            "prediction": "abnormal",
+            "confidence": 0.82,
+            "abnormal_confidence": 0.82,
+            "risk_score": 82.0,
+            "violation_score": 82.0,
+            "level": "매우 높음 🔴",
+            "action": "즉시 확인 및 수거 필요",
+            "status": "확인 대기",
+            "detections": []
+        },
+        {
+            "event_id": 5,
+            "timestamp": "2026-06-08 11:10:05",
+            "location": "본관 앞",
+            "source": "데모",
+            "prediction": "normal",
+            "confidence": 0.91,
+            "abnormal_confidence": 0.0,
+            "risk_score": 0.0,
+            "violation_score": 0.0,
+            "level": "정상 ⚪",
+            "action": "정상 주차 가능성 높음",
+            "status": "처리 완료",
+            "detections": []
+        },
+        {
+            "event_id": 6,
+            "timestamp": "2026-06-08 12:33:17",
+            "location": "제1공학관 앞",
+            "source": "데모",
+            "prediction": "abnormal",
+            "confidence": 0.65,
+            "abnormal_confidence": 0.65,
+            "risk_score": 65.0,
+            "violation_score": 65.0,
+            "level": "높음 🟡",
+            "action": "현장 확인 필요",
+            "status": "확인 대기",
+            "detections": []
+        },
+        {
+            "event_id": 7,
+            "timestamp": "2026-06-08 13:55:42",
+            "location": "언론정보관 앞",
+            "source": "데모",
+            "prediction": "normal",
+            "confidence": 0.89,
+            "abnormal_confidence": 0.0,
+            "risk_score": 0.0,
+            "violation_score": 0.0,
+            "level": "정상 ⚪",
+            "action": "정상 주차 가능성 높음",
+            "status": "처리 완료",
+            "detections": []
+        },
+        {
+            "event_id": 8,
+            "timestamp": "2026-06-08 14:20:09",
+            "location": "제5공학관 앞",
+            "source": "데모",
+            "prediction": "abnormal",
+            "confidence": 0.71,
+            "abnormal_confidence": 0.71,
+            "risk_score": 71.0,
+            "violation_score": 71.0,
+            "level": "높음 🟡",
+            "action": "현장 확인 필요",
+            "status": "현장 확인 중",
+            "detections": []
+        },
+    ]
+
+
+@st.cache_resource
+def load_scorer():
+    return RiskScorer()
+
+
+if "events" not in st.session_state:
+    st.session_state["events"] = get_demo_events()
+
+for key in ["current_event", "current_detection", "current_image_path"]:
+    if key not in st.session_state:
+        st.session_state[key] = None
+
+scorer = load_scorer()
+
 st.markdown("""
-<style>
-    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
-    div[data-testid="stMetric"] {
-        background: var(--background-color);
-        border: 1px solid rgba(128,128,128,0.2);
-        border-radius: 12px;
-        padding: 1rem 1.2rem;
-    }
-    .section-header {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: grey;
-        margin-bottom: 0.5rem;
-        font-weight: 600;
-    }
-</style>
+<div class="page-header">
+    <div>
+        <p class="page-title">🛴 전동킥보드 불법 주정차 탐지 시스템</p>
+        <p class="page-subtitle">AI 기반 신고 분석 및 동선 최적화 서비스</p>
+    </div>
+</div>
 """, unsafe_allow_html=True)
-
-# ── Session state init ────────────────────────────────────────────────────────
-if "scored_events" not in st.session_state:
-    st.session_state["scored_events"] = []
-if "current_event" not in st.session_state:
-    st.session_state["current_event"] = None
-if "current_risk" not in st.session_state:
-    st.session_state["current_risk"] = None
-
-scorer = RiskScorer()
-
-# ── Header ────────────────────────────────────────────────────────────────────
-col_title, col_badge = st.columns([5, 1])
-with col_title:
-    st.markdown("## 🛴 Scooter Anomaly Detection")
-    st.caption("Operations Dashboard — Hanyang University ERICA Campus")
-with col_badge:
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.success("● Live")
 
 st.divider()
 
-# ── Metrics row ───────────────────────────────────────────────────────────────
-all_events = st.session_state["scored_events"]
-total      = len(all_events)
-abnormal   = sum(1 for e in all_events if e.get("status") == "abnormal")
-danger     = sum(1 for e in all_events if "위험" in e.get("level", ""))
-resolved   = max(0, total - danger)
+tab_user, tab_admin = st.tabs(["📱 신고하기", "🖥️ 신고 관리"])
 
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("🛴 Total events",   total)
-m2.metric("⚠️ Abnormal",       abnormal)
-m3.metric("🔴 Danger",         danger)
-m4.metric("✅ Resolved",        resolved)
+with tab_user:
+    user_tab.render(scorer)
 
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ── Row 1 — IMU Event + Image Upload ─────────────────────────────────────────
-col_left, col_right = st.columns(2)
-
-with col_left:
-    st.markdown('<p class="section-header">📡 IMU Event</p>', unsafe_allow_html=True)
-
-    if st.button("⟳ Simulate IMU Event", use_container_width=True):
-        event = generate_mock_event()
-        st.session_state["current_event"] = event
-
-        risk = scorer.score(
-            detections=[],
-            tilt_angle=event["tilt"],
-            shock_detected=event["shock"]
-        )
-
-        merged = {**event, **risk}
-        st.session_state["current_risk"] = risk
-        st.session_state["scored_events"].append(merged)
-
-    if st.session_state["current_event"]:
-        e = st.session_state["current_event"]
-        c1, c2 = st.columns(2)
-        c1.markdown(f"**Event ID**  \n`{e['event_id']}`")
-        c2.markdown(f"**Location**  \n{e['location']}")
-        c1.markdown(f"**Tilt**  \n{e['tilt']}°")
-        c2.markdown(f"**Shock**  \n{'⚡ Detected' if e['shock'] else '— None'}")
-        c1.markdown(f"**Status**  \n{'🔴 Abnormal' if e['status'] == 'abnormal' else '🟢 Normal'}")
-        c2.markdown(f"**Time**  \n{e['timestamp'][:19]}")
-    else:
-        st.info("Click simulate to generate a mock IMU event.")
-
-with col_right:
-    st.markdown('<p class="section-header">🖼️ Image Upload</p>', unsafe_allow_html=True)
-    uploaded = st.file_uploader(
-        "Upload scooter image",
-        type=["jpg", "jpeg", "png"],
-        label_visibility="collapsed"
-    )
-    if uploaded:
-        img = Image.open(uploaded)
-        st.image(img, caption="Uploaded image", use_container_width=True)
-        st.info("💡 YOLO detector will be connected here once model weights are available.")
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ── Row 2 — Risk Assessment + Collection Priority ─────────────────────────────
-col_risk, col_priority = st.columns(2)
-
-with col_risk:
-    st.markdown('<p class="section-header">⚠️ Risk Assessment</p>', unsafe_allow_html=True)
-
-    risk = st.session_state["current_risk"]
-    if risk:
-        score_col, grade_col = st.columns(2)
-        score_col.metric("Risk Score", risk["risk_score"])
-        grade_col.metric("Grade", risk["level"])
-
-        st.progress(int(risk["risk_score"]) / 100)
-        st.markdown(f"**Recommended action:** {risk['action']}")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("Score breakdown"):
-            b1, b2, b3 = st.columns(3)
-            b1.metric("YOLO confidence", f"{risk['abnormal_conf']:.2f}")
-            b2.metric("Tilt score",      f"{risk['tilt_score']:.2f}")
-            b3.metric("Shock score",     f"{risk['shock_score']:.2f}")
-    else:
-        st.info("Simulate an event first to see the risk assessment.")
-
-with col_priority:
-    st.markdown('<p class="section-header">📋 Collection Priority</p>', unsafe_allow_html=True)
-
-    all_scored = st.session_state["scored_events"]
-    if all_scored:
-        priority   = get_priority_list(all_scored)
-        route      = optimize_route(priority)
-        total_dist = get_total_distance(route)
-
-        st.caption(f"Total route distance: **{total_dist} m**")
-
-        for item in route[:6]:
-            rc1, rc2, rc3 = st.columns([0.5, 3, 1.5])
-            rc1.markdown(f"**#{item['visit_order']}**")
-            rc2.markdown(f"**{item['location']}**  \n{item['action']}")
-            rc3.markdown(f"{item['level']}  \n`{item['risk_score']}`")
-            st.divider()
-    else:
-        st.info("No events yet. Simulate events to see the priority list.")
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ── Row 3 — Charts ────────────────────────────────────────────────────────────
-st.markdown('<p class="section-header">📊 Analytics</p>', unsafe_allow_html=True)
-
-all_scored = st.session_state["scored_events"]
-
-if len(all_scored) >= 1:
-    ch1, ch2 = st.columns(2)
-    with ch1:
-        events_with_pred = [
-            {**e, "prediction": e.get("status", "normal")}
-            for e in all_scored
-        ]
-        st.plotly_chart(plot_abnormal_ratio(events_with_pred), use_container_width=True)
-    with ch2:
-        st.plotly_chart(plot_events_by_time(all_scored), use_container_width=True)
-
-    ch3, ch4 = st.columns(2)
-    with ch3:
-        st.plotly_chart(plot_risk_distribution(all_scored), use_container_width=True)
-    with ch4:
-        st.plotly_chart(plot_incidents_by_location(all_scored), use_container_width=True)
-else:
-    st.info("Simulate at least 1 event to see analytics charts.")
-
-# ── Event log ─────────────────────────────────────────────────────────────────
-st.markdown("<br>", unsafe_allow_html=True)
-st.markdown('<p class="section-header">🗂️ Event Log</p>', unsafe_allow_html=True)
-
-if all_scored:
-    import pandas as pd
-    df = pd.DataFrame(all_scored)[
-        ["event_id", "timestamp", "location", "tilt", "shock", "status", "risk_score", "level", "action"]
-    ]
-    df["timestamp"] = df["timestamp"].str[:19]
-    st.dataframe(df, use_container_width=True)
-else:
-    st.info("No events logged yet.")
+with tab_admin:
+    admin_tab.render()

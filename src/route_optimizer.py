@@ -1,75 +1,180 @@
 import math
+from itertools import permutations
+
 
 LOCATION_COORDS = {
-    "정문 앞":        (37.2985, 126.8385),
-    "학술정보관 앞":  (37.2993, 126.8398),
-    "제1공학관 앞":   (37.2999, 126.8412),
-    "제2공학관 앞":   (37.3002, 126.8420),
-    "학생복지관 앞":  (37.2990, 126.8405),
-    "기숙사 앞":      (37.3010, 126.8430),
-    "컨퍼런스홀 앞":  (37.2997, 126.8415),
-    "체육관 앞":      (37.3005, 126.8425),
-    "셔틀콕 앞":      (37.2988, 126.8392),
+    "정문 앞": (37.300111, 126.837517),
+    "셔틀콕 앞": (37.298777, 126.837896),
+    "학술정보관 앞": (37.296945, 126.843523),
+    "학생복지관 앞": (37.304842, 126.829274),
+    "호수공원 앞": (37.297345, 126.833943),
+    "본관 앞": (37.299519, 126.833379),
+    "컨퍼런스홀 앞": (37.304192, 126.840394),
+    "체육관 앞": (37.296161, 126.833417),
+    "기숙사 앞": (37.294532, 126.835934),
+    "경상관 앞": (37.300023, 126.836109),
+    "글로벌문화통상관 앞": (37.299674, 126.835358),
+    "언론정보관 앞": (37.300347, 126.834881),
+    "제1과학기술관 앞": (37.299614, 126.836012),
+    "제2과학기술관 앞": (37.298809, 126.837326),
+    "제1학술관 앞": (37.298416, 126.835964),
+    "융합교육관 앞": (37.296001, 126.838167),
+    "약학대학 앞": (37.296426, 126.838565),
+    "제1공학관 앞": (37.297712, 126.837485),
+    "제2공학관 앞": (37.297321, 126.832706),
+    "제3공학관 앞": (37.297524, 126.836357),
+    "제4공학관 앞": (37.301608, 126.836698),
+    "제5공학관 앞": (37.297440, 126.837220),
+    "디자인교육관 앞": (37.297542, 126.831048),
+    "예체능대학 앞": (37.296102, 126.833903),
+    "학연산 클러스터 앞": (37.296575, 126.838448),
+    "카카오데이터센터 앞": (37.293721, 126.830899),
 }
 
 
+START_LOCATION = "정문 앞"
+PICKUP_SCORE_THRESHOLD = 50
+
+
+def get_score(event):
+    try:
+        return float(event.get("risk_score", event.get("violation_score", 0)) or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def distance_meters(a, b):
+    lat1, lon1 = a
+    lat2, lon2 = b
+
+    dlat = (lat2 - lat1) * 111000
+    dlon = (lon2 - lon1) * 88000
+
+    return math.sqrt(dlat ** 2 + dlon ** 2)
+
+
+def normalize_event(event):
+    item = dict(event)
+    score = get_score(item)
+
+    item["risk_score"] = score
+    item["violation_score"] = score
+
+    return item
+
+
 def get_priority_list(events: list) -> list:
-    valid = [
-        e for e in events
-        if e.get("location") in LOCATION_COORDS
-        and e.get("prediction") == "abnormal"
-    ]
-    return sorted(valid, key=lambda x: x.get("violation_score", 0), reverse=True)
+    valid = []
+
+    for event in events:
+        item = normalize_event(event)
+        score = get_score(item)
+
+        if item.get("location") not in LOCATION_COORDS:
+            continue
+
+        if item.get("prediction") != "abnormal":
+            continue
+
+        if score < PICKUP_SCORE_THRESHOLD:
+            continue
+
+        valid.append(item)
+
+    return sorted(
+        valid,
+        key=lambda x: get_score(x),
+        reverse=True
+    )
 
 
-def optimize_route(priority_list: list, start: tuple = (37.2985, 126.8385)) -> list:
+def calculate_route_distance(order, start_coords):
+    total = 0.0
+    current = start_coords
+
+    for item in order:
+        coords = LOCATION_COORDS[item["location"]]
+        total += distance_meters(current, coords)
+        current = coords
+
+    return total
+
+
+def find_shortest_order(items, start_coords):
+    if len(items) <= 1:
+        return items
+
+    if len(items) <= 8:
+        best_order = None
+        best_distance = float("inf")
+
+        for order in permutations(items):
+            total_distance = calculate_route_distance(order, start_coords)
+
+            if total_distance < best_distance:
+                best_distance = total_distance
+                best_order = list(order)
+
+        return best_order
+
+    return find_nearest_order(items, start_coords)
+
+
+def find_nearest_order(items, start_coords):
+    remaining = list(items)
+    route = []
+    current = start_coords
+
+    while remaining:
+        remaining.sort(
+            key=lambda x: distance_meters(
+                current,
+                LOCATION_COORDS[x["location"]]
+            )
+        )
+
+        nearest = remaining.pop(0)
+        route.append(nearest)
+        current = LOCATION_COORDS[nearest["location"]]
+
+    return route
+
+
+def optimize_route(priority_list: list, start: tuple = None) -> list:
     if not priority_list:
         return []
 
-    def dist(a, b):
-        lat1, lon1 = a
-        lat2, lon2 = b
-        dlat = (lat2 - lat1) * 111000
-        dlon = (lon2 - lon1) * 88000
-        return math.sqrt(dlat**2 + dlon**2)
+    start_coords = start or LOCATION_COORDS.get(START_LOCATION)
 
-    high_priority = [e for e in priority_list if e.get("violation_score", 0) >= 80]
-    others = [e for e in priority_list if e.get("violation_score", 0) < 80]
+    remaining = [
+        normalize_event(item)
+        for item in priority_list
+        if item.get("location") in LOCATION_COORDS
+    ]
+
+    if not remaining:
+        return []
+
+    ordered_items = find_shortest_order(remaining, start_coords)
 
     route = []
-    current = start
+    current = start_coords
 
-    for item in sorted(high_priority, key=lambda x: x.get("violation_score", 0), reverse=True):
+    for i, item in enumerate(ordered_items):
         coords = LOCATION_COORDS[item["location"]]
-        route.append({**item, "distance_from_prev": round(dist(current, coords), 1)})
-        current = coords
 
-    remaining = list(others)
-    while remaining:
-        remaining.sort(key=lambda x: dist(current, LOCATION_COORDS[x["location"]]))
-        nearest = remaining.pop(0)
-        coords = LOCATION_COORDS[nearest["location"]]
-        route.append({**nearest, "distance_from_prev": round(dist(current, coords), 1)})
-        current = coords
+        routed_item = dict(item)
+        routed_item["visit_order"] = i + 1
+        routed_item["distance_from_prev"] = round(distance_meters(current, coords), 1)
 
-    for i, item in enumerate(route):
-        item["visit_order"] = i + 1
+        route.append(routed_item)
+        current = coords
 
     return route
 
 
 def get_total_distance(route: list) -> float:
-    return round(sum(item.get("distance_from_prev", 0) for item in route), 1)
-
-
-if __name__ == "__main__":
-    mock_events = [
-        {"location": "학술정보관 앞", "prediction": "abnormal", "violation_score": 92.0, "level": "매우 높음 🔴", "action": "우선 단속/수거"},
-        {"location": "기숙사 앞", "prediction": "abnormal", "violation_score": 86.0, "level": "매우 높음 🔴", "action": "우선 단속/수거"},
-        {"location": "학생복지관 앞", "prediction": "abnormal", "violation_score": 63.0, "level": "높음 🟡", "action": "현장 확인 필요"},
-    ]
-    priority = get_priority_list(mock_events)
-    route = optimize_route(priority)
-    print(f"총 이동 거리: {get_total_distance(route)} m")
-    for item in route:
-        print(f"[{item['visit_order']}] {item['location']} → {item['level']} ({item['distance_from_prev']}m)")
+    return round(
+        sum(float(item.get("distance_from_prev", 0) or 0) for item in route),
+        1
+    )

@@ -15,3 +15,4 @@ weights/
 __pycache__/
 .ipynb_checkpoints/
 *.cache
+data/uploaded_images/
