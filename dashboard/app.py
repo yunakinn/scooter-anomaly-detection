@@ -148,8 +148,14 @@ def load_scorer():
     return RiskScorer()
 
 
-if "events" not in st.session_state:
+DEMO_EVENTS_VERSION = "original_demo_locations_v1"
+
+if (
+    "events" not in st.session_state
+    or st.session_state.get("demo_events_version") != DEMO_EVENTS_VERSION
+):
     st.session_state["events"] = get_demo_events()
+    st.session_state["demo_events_version"] = DEMO_EVENTS_VERSION
 
 for key in ["current_event", "current_detection", "current_image_path"]:
     if key not in st.session_state:
@@ -159,8 +165,11 @@ scorer = load_scorer()
 
 st.markdown("""
 <div class="page-header">
-    <div>
-        <p class="page-title">🛴 전동킥보드 불법 주정차 탐지 시스템</p>
+    <div class="page-title-row">
+        <div class="page-icon" aria-hidden="true">🛴</div>
+        <p class="page-title">전동킥보드 불법 주정차 탐지 시스템</p>
+    </div>
+    <div class="page-subtitle-wrap">
         <p class="page-subtitle">AI 기반 신고 분석 및 동선 최적화 서비스</p>
     </div>
 </div>
