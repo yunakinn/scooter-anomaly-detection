@@ -7,6 +7,13 @@ import streamlit as st
 from src.detector import Detector
 from src.risk_scorer import RiskScorer
 from src.event_system import LOCATIONS, create_detection_event
+from dashboard.ui_components import (
+    render_detection_result_card,
+    render_empty_state,
+    render_image_caption,
+    render_section_heading,
+    render_detection_header,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,21 +61,27 @@ def clear_previous_result_for_new_image():
     st.session_state["report_submitted"] = False
 
 
-def render_result_summary(prediction):
+def get_result_copy(prediction):
     if prediction == "abnormal":
-        st.warning("불법 주정차 의심 상태로 접수되었습니다.")
-        st.write("관리자가 신고 위치와 이미지를 확인한 뒤 필요한 조치를 진행합니다.")
-    elif prediction == "normal":
-        st.success("정상 주차 가능성이 높은 상태로 분석되었습니다.")
-        st.write("신고 내용은 기록되며, 필요 시 관리자가 확인할 수 있습니다.")
-    else:
-        st.warning("전동킥보드를 명확하게 감지하지 못했습니다.")
-        st.write("사진이 흐리거나 대상이 작게 보이면 다른 사진으로 다시 신고해주세요.")
+        return (
+            "danger",
+            "불법 주정차 의심",
+            "현장 확인 대상으로 등록되었습니다.",
+        )
+    if prediction == "normal":
+        return (
+            "success",
+            "정상 주차 가능성 높음",
+            "접수 내역에 기록되었습니다.",
+        )
+    return (
+        "warning",
+        "감지 결과 확인 필요",
+        "대상이 작거나 흐리면 다른 사진으로 다시 접수해주세요.",
+    )
 
 
 def render(scorer: RiskScorer):
-    st.markdown("<br>", unsafe_allow_html=True)
-
     default_states = {
         "events": [],
         "current_event": None,
@@ -88,18 +101,17 @@ def render(scorer: RiskScorer):
 
     with left:
         with st.container(border=True):
-            st.markdown('<p class="slabel">📥 킥보드 신고</p>', unsafe_allow_html=True)
+            st.markdown('<p class="slabel">신고 접수</p>', unsafe_allow_html=True)
 
             if st.session_state.get("report_submitted"):
-                st.success("신고가 접수되었습니다. 오른쪽에서 AI 탐지 결과를 확인할 수 있습니다.")
                 st.session_state["report_submitted"] = False
 
             st.markdown(
-                '<div class="step"><div class="step-num">1</div><div class="step-text">사진 등록</div></div>',
+                '<div class="step"><div class="step-num">1</div><div class="step-text">사진 업로드</div></div>',
                 unsafe_allow_html=True
             )
 
-            st.caption("신고할 전동킥보드 사진을 업로드해주세요.")
+            st.caption("전동킥보드와 주변 보행 공간이 함께 보이는 사진을 올려주세요.")
 
             uploaded_file = st.file_uploader(
                 "신고 이미지 업로드",
@@ -127,19 +139,17 @@ def render(scorer: RiskScorer):
                 st.image(
                     str(image_path),
                     caption=uploaded_file.name,
-                    use_container_width=True
+                    width="stretch"
                 )
             else:
-                st.info("신고할 사진을 업로드하면 미리보기가 표시됩니다.")
-
-            st.markdown("<br>", unsafe_allow_html=True)
+                st.info("사진을 업로드하면 이곳에 미리보기가 표시됩니다.")
 
             st.markdown(
-                '<div class="step"><div class="step-num">2</div><div class="step-text">위치 선택</div></div>',
+                '<div class="step"><div class="step-num">2</div><div class="step-text">발견 위치</div></div>',
                 unsafe_allow_html=True
             )
 
-            st.caption("전동킥보드를 발견한 위치를 직접 선택해주세요.")
+            st.caption("신고 위치와 가장 가까운 건물을 선택해주세요.")
 
             selected_location = st.selectbox(
                 "위치",
@@ -147,21 +157,20 @@ def render(scorer: RiskScorer):
                 label_visibility="collapsed"
             )
 
-            st.markdown("<br>", unsafe_allow_html=True)
-
             st.markdown(
-                '<div class="step"><div class="step-num">3</div><div class="step-text">AI 탐지 및 신고 제출</div></div>',
+                '<div class="step"><div class="step-num">3</div><div class="step-text">분석 및 제출</div></div>',
                 unsafe_allow_html=True
             )
 
             analyze_clicked = st.button(
-                "AI 탐지 후 신고 제출",
-                use_container_width=True,
-                disabled=image_path is None
+                "신고 접수하기",
+                width="stretch",
+                disabled=image_path is None,
+                type="primary",
             )
 
             if analyze_clicked and image_path:
-                with st.spinner("AI가 전동킥보드 주차 상태를 분석하고 있습니다..."):
+                with st.spinner("YOLO 모델이 전동킥보드 영역을 탐지하고 있습니다..."):
                     try:
                         detector = load_detector()
                         detection_result = detector.predict(image_path)
@@ -194,14 +203,15 @@ def render(scorer: RiskScorer):
                             st.exception(e)
 
             if st.session_state.get("current_detection"):
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                if st.button("새 신고 작성", use_container_width=True):
+                if st.button("다시 접수하기", width="stretch", type="secondary"):
                     reset_current_report()
                     st.rerun()
 
     with right:
-        st.markdown("### 🤖 AI 탐지 결과")
+        render_section_heading(
+            "AI 탐지 결과",
+            "분석된 이미지와 최종 판정을 확인합니다.",
+        )
 
         current_detection = st.session_state.get("current_detection")
         current_event = st.session_state.get("current_event")
@@ -209,20 +219,23 @@ def render(scorer: RiskScorer):
 
         if current_detection:
             annotated_image = current_detection.get("annotated_image")
+            confidence = float(current_detection.get("confidence", 0.0) or 0.0)
+
+            render_detection_header(confidence)
 
             if annotated_image is not None:
                 st.image(
                     annotated_image,
-                    caption="AI가 감지한 전동킥보드 영역",
-                    use_container_width=True,
+                    width="stretch",
                     channels="BGR"
                 )
+                render_image_caption("분석된 전동킥보드 영역")
             elif current_image_path:
                 st.image(
                     current_image_path,
-                    caption="업로드된 이미지",
-                    use_container_width=True
+                    width="stretch"
                 )
+                render_image_caption("업로드된 이미지")
                 st.warning("AI 탐지 이미지를 불러오지 못했습니다.")
 
             prediction = current_detection.get("prediction", "-")
@@ -232,17 +245,16 @@ def render(scorer: RiskScorer):
             else:
                 location = "-"
 
-            st.markdown("#### 신고 결과 요약")
-            render_result_summary(prediction)
-
-            st.markdown("#### 신고 위치")
-            st.info(location)
-
-            st.markdown("#### 접수 안내")
-            st.info("신고가 접수되었습니다. 관리자가 이미지와 위치를 확인한 뒤 필요한 조치를 진행합니다.")
+            result_status, result_title, result_description = get_result_copy(prediction)
+            render_detection_result_card(
+                result_status,
+                result_title,
+                result_description,
+                location,
+            )
 
         else:
-            with st.container(border=True):
-                st.info("왼쪽에서 사진을 등록하고 위치를 선택한 뒤 신고를 제출하면 AI 탐지 결과가 여기에 표시됩니다.")
-                st.write("업로드된 사진은 AI 모델을 통해 정상 주차 또는 불법 주정차 의심 상태로 분석됩니다.")
-                st.write("신고가 접수되면 관리자가 이미지와 위치를 확인합니다.")
+            render_empty_state(
+                "아직 분석 결과가 없습니다.",
+                "사진과 위치를 입력한 뒤 신고를 제출하면 탐지 결과와 접수 정보가 표시됩니다.",
+            )
