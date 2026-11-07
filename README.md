@@ -1,6 +1,6 @@
 # Scooter Parking Detection
 
-A prototype that connects scooter parking detection to report management and pickup route planning.
+A prototype for scooter parking detection, report management, and pickup route planning.
 
 **Object detection · Streamlit · Geospatial visualization**
 
@@ -8,7 +8,7 @@ A prototype that connects scooter parking detection to report management and pic
 
 ## Overview
 
-The application accepts a reported image and location, detects normal or abnormal parking, and turns the result into a scored event. An administrator view supports filtering reports, tracking their status, and planning a pickup route across predefined campus locations.
+Users submit a photo and location. The application classifies parking as normal or abnormal and creates a scored report. An administrator view supports filtering reports, tracking their status, and planning a pickup route across predefined campus locations.
 
 The repository includes the dashboard, inference and scoring logic, route planning, experiment notebooks, and sample images. Trained detector weights are not included.
 
@@ -36,15 +36,13 @@ The 45-epoch run has the highest recorded mAP50–95 among the 26 saved evaluati
 
 ![Recorded YOLO26n epoch sweep](assets/yolo26n_epoch_trend.png)
 
-These are saved notebook outputs, not newly rerun experiments. Models and training durations were compared using the same test split, so this is an exploratory comparison rather than a final evaluation on an untouched model-selection holdout. The dashboard's separately supplied `best.pt` is not identified by these tables.
+These results come from saved notebook outputs. All models and training durations were compared on the same test split, so the results are exploratory rather than an independent final evaluation. The tables do not identify the checkpoint used by the dashboard.
 
 **Sources:** [YOLO notebook](notebooks/exp_yolo.ipynb) · [RT-DETR notebook](notebooks/exp_rtdetr.ipynb) · [All 26 recorded results](assets/recorded_test_results.csv)
 
-The graphs above were exported directly from the existing YOLO notebook without changing their values.
-
 ## Example Inputs
 
-These are repository sample inputs, not model predictions or evidence of detection accuracy.
+Sample input images, not annotated model predictions.
 
 <table>
 <tr>
@@ -79,9 +77,7 @@ score = round(maximum abnormal confidence × 100, 1)
 | 30–<50 | Low | Monitor |
 | 0–<30 | Normal | Likely normal parking |
 
-When detection returns `none`, the event is marked **indeterminate** rather than normal. The score does not establish that parking is safe.
-
-This is a confidence-based prioritization heuristic, not a calibrated measure of physical danger or a legal determination of a parking violation.
+When detection returns `none`, the event is marked **indeterminate**. Scores reflect detector confidence and are used to prioritize review; they are not calibrated measures of physical risk.
 
 ### Pickup route planning
 
@@ -105,7 +101,7 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-`requirements.txt` declares supported dependency ranges. It is not a fully locked environment. For development checks, install `pytest` and run `python -m pytest`.
+Dependencies are listed in `requirements.txt`. To run the tests, install `pytest` and run `python -m pytest`.
 
 ### Start the dashboard
 
@@ -113,7 +109,7 @@ python -m pip install -r requirements.txt
 streamlit run dashboard/app.py
 ```
 
-The dashboard starts with eight hard-coded demonstration events. These illustrate the administrator workflow; their scores are not evaluation results. Submitting a new image for analysis additionally requires detector weights.
+The dashboard starts with eight demo reports for exploring the administrator workflow. Their scores are illustrative. Analyzing a new image requires detector weights.
 
 ### Enable image inference
 
@@ -153,7 +149,3 @@ The map optionally reads `VWORLD_API_KEY`; otherwise it uses the fallback tiles 
 - Report state is held only in Streamlit session state rather than a persistent database. Repeated submission of the same image and location in a session is blocked; a new session has independent state. Uploaded images are saved locally under `data/uploaded_images/`.
 - Locations and route assumptions are specific to the predefined campus map.
 - Reproducing model training requires the dataset and an appropriate training setup beyond the included sample images.
-
-
-
-Only two representative demo inputs are retained. Image-selection notebook outputs were cleared; recorded experiment outputs, exported graphs, and historical metrics are preserved.
