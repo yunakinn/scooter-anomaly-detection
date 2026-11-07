@@ -79,6 +79,8 @@ score = round(maximum abnormal confidence × 100, 1)
 | 30–<50 | Low | Monitor |
 | 0–<30 | Normal | Likely normal parking |
 
+When detection returns `none`, the event is marked **indeterminate** rather than normal. The score does not establish that parking is safe.
+
 This is a confidence-based prioritization heuristic, not a calibrated measure of physical danger or a legal determination of a parking violation.
 
 ### Pickup route planning
@@ -100,10 +102,10 @@ git clone https://github.com/yunakinn/scooter-anomaly-detection.git
 cd scooter-anomaly-detection
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install streamlit ultralytics folium streamlit-folium plotly pandas
+python -m pip install -r requirements.txt
 ```
 
-There is currently no dependency manifest or pinned environment in this repository. The command above lists the application's directly imported third-party packages; it is not a tested lockfile.
+`requirements.txt` declares supported dependency ranges. It is not a fully locked environment. For development checks, install `pytest` and run `python -m pytest`.
 
 ### Start the dashboard
 
@@ -143,13 +145,15 @@ The map optionally reads `VWORLD_API_KEY`; otherwise it uses the fallback tiles 
 | [src/visualization.py](src/visualization.py) | Event statistics and charts |
 | [notebooks/](notebooks/) | Data processing and YOLO / RT-DETR experiment notebooks |
 | [data/demo_images/](data/demo_images/) | Sample input images |
-| [dataset.yaml](dataset.yaml) | Training dataset configuration requiring local paths |
+| [dataset.yaml](dataset.yaml) | Repository-relative training dataset configuration |
 
 ## Current Scope and Limitations
 
 - Recorded test metrics come from the committed experiment notebooks. Dashboard demonstration events and sample inputs are separate from those evaluations.
-- Report state is held in Streamlit session state rather than a persistent database. Uploaded images are saved locally under `data/uploaded_images/`.
+- Report state is held only in Streamlit session state rather than a persistent database. Repeated submission of the same image and location in a session is blocked; a new session has independent state. Uploaded images are saved locally under `data/uploaded_images/`.
 - Locations and route assumptions are specific to the predefined campus map.
 - Reproducing model training requires the dataset and an appropriate training setup beyond the included sample images.
 
 
+
+Only two representative demo inputs are retained. Image-selection notebook outputs were cleared; recorded experiment outputs, exported graphs, and historical metrics are preserved.

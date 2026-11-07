@@ -1,4 +1,4 @@
-path: /data1/workspaces/tp2026/scooter-anomaly-detection/data/yolo
+path: data/yolo
 
 train: images/train
 val: images/val

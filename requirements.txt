@@ -1,0 +1,7 @@
+streamlit>=1.49,<2
+ultralytics>=8.4,<9
+folium>=0.20,<1
+streamlit-folium>=0.25,<1
+plotly>=6,<7
+pandas>=2.2,<4
+Pillow>=11,<13
