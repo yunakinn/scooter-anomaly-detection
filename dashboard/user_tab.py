@@ -2,6 +2,8 @@ from pathlib import Path
 from datetime import datetime
 import hashlib
 
+from src.report_state import report_key, is_duplicate_report
+
 import streamlit as st
 
 from src.detector import Detector
@@ -24,7 +26,7 @@ def save_uploaded_file(uploaded_file):
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
     file_bytes = uploaded_file.getvalue()
-    file_hash = hashlib.md5(file_bytes).hexdigest()[:10]
+    file_hash = hashlib.sha256(file_bytes).hexdigest()
     suffix = Path(uploaded_file.name).suffix.lower()
 
     if suffix not in [".jpg", ".jpeg", ".png"]:
@@ -91,6 +93,7 @@ def render(scorer: RiskScorer):
         "uploaded_file_hash": None,
         "uploaded_image_path": None,
         "upload_key": 0,
+        "submitted_report_keys": set(),
     }
 
     for key, value in default_states.items():
@@ -102,9 +105,6 @@ def render(scorer: RiskScorer):
     with left:
         with st.container(border=True):
             st.markdown('<p class="slabel">신고 접수</p>', unsafe_allow_html=True)
-
-            if st.session_state.get("report_submitted"):
-                st.session_state["report_submitted"] = False
 
             st.markdown(
                 '<div class="step"><div class="step-num">1</div><div class="step-text">사진 업로드</div></div>',
@@ -124,7 +124,7 @@ def render(scorer: RiskScorer):
 
             if uploaded_file:
                 file_bytes = uploaded_file.getvalue()
-                current_hash = hashlib.md5(file_bytes).hexdigest()[:10]
+                current_hash = hashlib.sha256(file_bytes).hexdigest()
 
                 if st.session_state["uploaded_file_hash"] != current_hash:
                     saved_path, saved_hash = save_uploaded_file(uploaded_file)
@@ -162,14 +162,19 @@ def render(scorer: RiskScorer):
                 unsafe_allow_html=True
             )
 
+            submission_key = report_key(st.session_state.get("uploaded_file_hash"), selected_location)
+            duplicate = is_duplicate_report(submission_key, st.session_state["submitted_report_keys"])
+            if duplicate:
+                st.info("같은 사진과 위치로 이미 접수한 신고가 있습니다.")
+
             analyze_clicked = st.button(
                 "신고 접수하기",
                 width="stretch",
-                disabled=image_path is None,
+                disabled=image_path is None or duplicate,
                 type="primary",
             )
 
-            if analyze_clicked and image_path:
+            if analyze_clicked and image_path and not duplicate:
                 with st.spinner("YOLO 모델이 전동킥보드 영역을 탐지하고 있습니다..."):
                     try:
                         detector = load_detector()
@@ -177,7 +182,8 @@ def render(scorer: RiskScorer):
 
                         score_result = scorer.score(
                             abnormal_confidence=detection_result.get("abnormal_confidence", 0.0),
-                            detections=detection_result.get("detections", [])
+                            detections=detection_result.get("detections", []),
+                            prediction=detection_result.get("prediction", "none")
                         )
 
                         event = create_detection_event(
@@ -190,6 +196,7 @@ def render(scorer: RiskScorer):
                         )
 
                         st.session_state["events"].append(event)
+                        st.session_state["submitted_report_keys"].add(submission_key)
                         st.session_state["current_event"] = event
                         st.session_state["current_detection"] = detection_result
                         st.session_state["current_image_path"] = str(image_path)
