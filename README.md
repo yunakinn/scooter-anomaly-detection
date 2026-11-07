@@ -4,13 +4,7 @@ A prototype that connects scooter parking detection to report management and pic
 
 **Object detection · Streamlit · Geospatial visualization**
 
-[Demo](#application-preview) · [Results](#recorded-experiments) · [Run](#getting-started) · [Implementation](dashboard/app.py)
-
-## Application Preview
-
-![Administrator dashboard running with built-in demo events](assets/dashboard_admin_demo.png)
-
-Actual screenshot of the unmodified Streamlit application running locally with its eight built-in demonstration events. Counts, scores, and statuses in this preview are demo data; no detector checkpoint was used to produce them.
+[Results](#recorded-experiments) · [Run](#getting-started) · [Implementation](dashboard/app.py)
 
 ## Overview
 
