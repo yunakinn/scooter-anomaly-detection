@@ -1,4 +1,3 @@
-import random
 from datetime import datetime
 
 
@@ -32,24 +31,8 @@ LOCATIONS = [
 ]
 
 
-event_log = []
-
-
 def get_next_event_id(existing_events=None):
-    ids = []
-
-    for event in event_log:
-        event_id = event.get("event_id")
-        if isinstance(event_id, int):
-            ids.append(event_id)
-
-    if existing_events:
-        for event in existing_events:
-            event_id = event.get("event_id")
-            if isinstance(event_id, int):
-                ids.append(event_id)
-
-    return max(ids) + 1 if ids else 1
+    return max((e.get("event_id", 0) for e in (existing_events or []) if isinstance(e.get("event_id"), int)), default=0) + 1
 
 
 def create_detection_event(
@@ -63,7 +46,7 @@ def create_detection_event(
     event = {
         "event_id": get_next_event_id(existing_events),
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "location": location if location else random.choice(LOCATIONS),
+        "location": location or "미지정",
         "image_path": str(image_path),
         "source": source,
         "prediction": "none",
@@ -71,8 +54,9 @@ def create_detection_event(
         "abnormal_confidence": 0.0,
         "risk_score": 0.0,
         "violation_score": 0.0,
-        "level": "정상 ⚪",
-        "action": "정상 주차 가능성 높음",
+        "level": "판단 불가",
+        "action": "사진과 탐지 결과 재확인 필요",
+        "status": "확인 대기",
         "detections": []
     }
 
@@ -98,22 +82,4 @@ def create_detection_event(
         event["level"] = score_result.get("level", event["level"])
         event["action"] = score_result.get("action", event["action"])
 
-    event_log.append(event)
     return event
-
-
-def get_events():
-    return event_log
-
-
-def clear_events():
-    event_log.clear()
-
-
-if __name__ == "__main__":
-    event = create_detection_event(
-        image_path="data/demo_images/abnormal/sample.jpg",
-        location="학술정보관 앞",
-        source="demo_image"
-    )
-    print(event)

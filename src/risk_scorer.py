@@ -19,7 +19,7 @@ class RiskScorer:
         value = self._to_float(value, 0.0)
         return max(0.0, min(value, 1.0))
 
-    def score(self, abnormal_confidence=0.0, detections=None, **kwargs):
+    def score(self, abnormal_confidence=0.0, detections=None, prediction=None, **kwargs):
         abnormal_confidence = self._clamp_confidence(abnormal_confidence)
 
         if detections:
@@ -32,6 +32,10 @@ class RiskScorer:
 
                 if label == "abnormal":
                     abnormal_confidence = max(abnormal_confidence, confidence)
+
+        if prediction == "none" or (prediction is None and not detections and abnormal_confidence == 0):
+            return {"risk_score": 0.0, "violation_score": 0.0, "level": "판단 불가",
+                    "action": "사진과 탐지 결과 재확인 필요", "abnormal_confidence": abnormal_confidence}
 
         risk_score = round(abnormal_confidence * 100, 1)
 
