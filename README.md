@@ -4,13 +4,49 @@ A prototype that connects scooter parking detection to report management and pic
 
 **Object detection · Streamlit · Geospatial visualization**
 
-[Dashboard](dashboard/app.py) · [Detector](src/detector.py) · [Route planner](src/route_optimizer.py)
+[Demo](#application-preview) · [Results](#recorded-experiments) · [Run](#getting-started) · [Implementation](dashboard/app.py)
+
+## Application Preview
+
+![Administrator dashboard running with built-in demo events](assets/dashboard_admin_demo.png)
+
+Actual screenshot of the unmodified Streamlit application running locally with its eight built-in demonstration events. Counts, scores, and statuses in this preview are demo data; no detector checkpoint was used to produce them.
 
 ## Overview
 
 The application accepts a reported image and location, detects normal or abnormal parking, and turns the result into a scored event. An administrator view supports filtering reports, tracking their status, and planning a pickup route across predefined campus locations.
 
 The repository includes the dashboard, inference and scoring logic, route planning, experiment notebooks, and sample images. Trained detector weights are not included.
+
+## Recorded Experiments
+
+The committed notebooks contain **26 recorded test evaluations** across seven detector variants and several training durations. The evaluation function explicitly uses `split="test"`; its logs report **204 test images and 217 annotated instances**.
+
+### Comparison at 30 training epochs
+
+| Detector | mAP50 | mAP50–95 | Precision | Recall |
+| :--- | ---: | ---: | ---: | ---: |
+| YOLOv8n | 0.935 | 0.656 | 0.930 | 0.893 |
+| YOLOv8s | 0.945 | 0.648 | 0.903 | 0.921 |
+| YOLOv8m | 0.924 | 0.648 | 0.845 | 0.914 |
+| YOLO26n | 0.944 | 0.675 | 0.918 | 0.929 |
+| YOLO26s | 0.941 | 0.663 | 0.928 | 0.897 |
+| YOLO26m | 0.936 | 0.651 | 0.919 | 0.889 |
+| RT-DETR-L | 0.921 | 0.675 | 0.935 | 0.909 |
+
+![Recorded comparison at 30 epochs](assets/model_comparison_ep30.png)
+
+### Additional YOLO26n epoch sweep
+
+The 45-epoch run has the highest recorded mAP50–95 among the 26 saved evaluations: **0.692**, with mAP50 **0.964**, precision **0.931**, and recall **0.935**.
+
+![Recorded YOLO26n epoch sweep](assets/yolo26n_epoch_trend.png)
+
+These are saved notebook outputs, not newly rerun experiments. Models and training durations were compared using the same test split, so this is an exploratory comparison rather than a final evaluation on an untouched model-selection holdout. The dashboard's separately supplied `best.pt` is not identified by these tables.
+
+**Sources:** [YOLO notebook](notebooks/exp_yolo.ipynb) · [RT-DETR notebook](notebooks/exp_rtdetr.ipynb) · [All 26 recorded results](assets/recorded_test_results.csv)
+
+The graphs above were exported directly from the existing YOLO notebook without changing their values.
 
 ## Example Inputs
 
@@ -27,13 +63,9 @@ These are repository sample inputs, not model predictions or evidence of detecti
 
 ```mermaid
 flowchart LR
-    I["Image + report location"] --> Y["YOLO detector"]
-    Y --> D["Boxes + class confidence"]
-    D --> S["Violation score"]
-    S --> E["Report event"]
-    E --> A["Admin filters and status tracking"]
-    A --> R["Pickup targets"]
-    R --> M["Route order + map"]
+    I["Image report"] --> Y["YOLO detection"]
+    Y --> S["Score + event"]
+    S --> A["Admin review + pickup route"]
 ```
 
 ### Detection and scoring
@@ -121,8 +153,9 @@ The map optionally reads `VWORLD_API_KEY`; otherwise it uses the fallback tiles 
 
 ## Current Scope and Limitations
 
-- No consolidated held-out evaluation metrics are published in this README; sample inputs and demo events should not be read as measured performance.
+- Recorded test metrics come from the committed experiment notebooks. Dashboard demonstration events and sample inputs are separate from those evaluations.
 - Report state is held in Streamlit session state rather than a persistent database. Uploaded images are saved locally under `data/uploaded_images/`.
 - Locations and route assumptions are specific to the predefined campus map.
 - Reproducing model training requires the dataset and an appropriate training setup beyond the included sample images.
+
 
