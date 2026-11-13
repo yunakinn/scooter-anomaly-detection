@@ -163,12 +163,7 @@ def render_kpi(events):
         if event.get("prediction") == "abnormal"
     )
 
-    pickup_events = sum(
-        1 for event in events
-        if event.get("prediction") == "abnormal"
-        and get_score(event) >= 50
-        and get_status(event) != "처리 완료"
-    )
+    pickup_events = len(get_priority_list(events))
 
     completed_events = sum(
         1 for event in events
