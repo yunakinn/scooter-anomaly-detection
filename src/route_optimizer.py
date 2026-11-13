@@ -38,9 +38,11 @@ PICKUP_SCORE_THRESHOLD = 50
 
 def get_score(event):
     try:
-        return float(event.get("risk_score", event.get("violation_score", 0)) or 0)
-    except (TypeError, ValueError):
+        score = float(event.get("risk_score", event.get("violation_score", 0)) or 0)
+    except (TypeError, ValueError, OverflowError):
         return 0.0
+    # Invalid confidence-derived scores must never become pickup candidates.
+    return score if math.isfinite(score) and 0 <= score <= 100 else 0.0
 
 
 def distance_meters(a, b):
@@ -74,6 +76,9 @@ def get_priority_list(events: list) -> list:
             continue
 
         if item.get("prediction") != "abnormal":
+            continue
+
+        if item.get("status") == "처리 완료":
             continue
 
         if score < PICKUP_SCORE_THRESHOLD:
@@ -144,16 +149,20 @@ def optimize_route(priority_list: list, start: tuple = None) -> list:
     if not priority_list:
         return []
 
-    start_coords = start or LOCATION_COORDS.get(START_LOCATION)
-
-    remaining = [
-        normalize_event(item)
-        for item in priority_list
-        if item.get("location") in LOCATION_COORDS
-    ]
+    # Keep eligibility consistent even when called outside the dashboard.
+    remaining = get_priority_list(priority_list)
 
     if not remaining:
         return []
+
+    start_coords = LOCATION_COORDS[START_LOCATION] if start is None else start
+    try:
+        lat, lon = (float(value) for value in start_coords)
+        if not (math.isfinite(lat) and math.isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ValueError
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("start must contain a finite latitude and longitude in valid ranges") from exc
+    start_coords = (lat, lon)
 
     ordered_items = find_shortest_order(remaining, start_coords)
 
