@@ -192,3 +192,7 @@ python -m pytest
 - **Storage:** reports live in Streamlit session state rather than a persistent database. The same image and location cannot be submitted twice within a session; a new session has independent state. Uploaded images are saved locally under `data/uploaded_images/`.
 - **Routing:** locations are predefined campus points. Distances do not account for roads, pedestrian paths, or a return trip.
 - **Reproduction:** model training requires the dataset and an appropriate training setup beyond the included sample images. New image inference requires separately supplied weights.
+
+## License
+
+The code in this repository is released under the [MIT License](LICENSE).
