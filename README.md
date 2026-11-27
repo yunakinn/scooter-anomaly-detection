@@ -1,5 +1,7 @@
 # Scooter Parking Detection
 
+[![Tests](https://github.com/yunakinn/scooter-anomaly-detection/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/yunakinn/scooter-anomaly-detection/actions/workflows/tests.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 **From a parking photo to a report and a pickup route.**
 
 Object detection · Streamlit dashboard · Geospatial visualization
